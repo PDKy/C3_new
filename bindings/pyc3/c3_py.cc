@@ -139,6 +139,8 @@ PYBIND11_MODULE(c3, m) {
       .def(py::init<const LCS &>(), py::arg("other"))
       .def("Simulate", &LCS::Simulate, py::arg("x_init"), py::arg("u"),
            "Simulate the system for one step")
+      .def("Simulate_debug", &LCS::Simulate_debug, py::arg("x_init"), py::arg("u"),
+           "Simulate the system for one step")
       .def("A", &LCS::A, py::return_value_policy::copy)
       .def("B", &LCS::B, py::return_value_policy::copy)
       .def("D", &LCS::D, py::return_value_policy::copy)

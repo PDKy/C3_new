@@ -22,8 +22,8 @@ def init_pivoting(x_curr:np.array, N:int) -> LCS:
     x6 = x_curr[6]
     x8 = x_curr[8]
 
-    x5 = x_curr[6]
-    x7 = x_curr[8]
+    x5 = x_curr[5]
+    x7 = x_curr[7]
 
     mu1 = 0.1
     mu2 = 9.81
@@ -196,7 +196,11 @@ def make_pivoting_cost(lcs):
     m = lcs.num_lambdas()
     k = lcs.num_inputs()
 
-    R = [0.01 * np.eye(k) for _ in range(N)]
+    Rinit = np.eye(k)
+    Rinit[0,0] = 1
+    Rinit[1,1] = 1
+
+    R = [Rinit for _ in range(N)]
 
     Qinit = np.eye(n)
     Qinit[4,4] = 100

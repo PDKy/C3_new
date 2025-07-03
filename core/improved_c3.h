@@ -194,6 +194,8 @@ protected:
                         const Eigen::MatrixXd &H, const Eigen::VectorXd &c,
                         const int admm_iteration, const int &warm_start_index);
 
+
+
 private:
   /*!
    * Scales the LCS matrices internally to better condition the problem.
@@ -237,6 +239,13 @@ private:
                                        int admm_iteration,
                                        bool is_final_solve = false);
 
+  std::vector<Eigen::VectorXd> Solve_FinalQP(const Eigen::VectorXd &x0,
+                                     const std::vector<Eigen::MatrixXd> &G,
+                                     const std::vector<Eigen::VectorXd> &delta,
+                                     int admm_iteration,
+                                     bool is_final);
+
+
   LCS lcs_;
   double AnDn_ = 1.0; // Scaling factor for lambdas
   const CostMatrices cost_matrices_;
@@ -247,7 +256,7 @@ private:
 
   drake::solvers::MathematicalProgram prog_;
   // QP step variables
-  drake::solvers::IpoptSolver osqp_;
+  drake::solvers::OsqpSolver osqp_;
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;

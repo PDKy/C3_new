@@ -61,10 +61,25 @@ const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u) {
   VectorXd x_final;
   VectorXd force;
   drake::solvers::MobyLCPSolver<double> LCPSolver;
-  LCPSolver.SolveLcpLemke(
+  LCPSolver.SolveLcpLemkeRegularized(
       F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force);
   x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
   return x_final;
+}
+
+  const std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd> LCS::Simulate_debug(VectorXd& x_init, VectorXd& u) {
+  VectorXd x_final;
+  VectorXd force;
+  VectorXd distance;
+
+  drake::solvers::MobyLCPSolver<double> LCPSolver;
+  LCPSolver.SolveLcpLemkeRegularized(
+      F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force);
+  x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
+
+  distance = E_[0]*x_init + F_[0] * force + H_[0] * u +c_[0];
+
+  return {x_final,force,distance};
 }
 
 }  // namespace c3

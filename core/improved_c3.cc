@@ -53,7 +53,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
       n_lambda_(lcs.num_lambdas()), n_u_(lcs.num_inputs()), lcs_(lcs),
       cost_matrices_(costs), x_desired_(x_desired), options_(options),
       h_is_zero_(lcs.H()[0].isZero(0)), prog_(MathematicalProgram()),
-      osqp_(IpoptSolver()) {
+      osqp_(OsqpSolver()) {
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_x_.resize(options_.admm_iter + 1);
@@ -282,7 +282,8 @@ void ImprovedC3::Solve(const VectorXd &x0) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  vector<VectorXd> zfin = SolveQP(x0, G, WD, options_.admm_iter, true);
+  vector<VectorXd> zfin = Solve_FinalQP(x0, G, WD, options_.admm_iter,true);
+  //vector<VectorXd> zfin = SolveQP(x0, G, WD, options_.admm_iter,true);
 
   *w_sol_ = w;
   *delta_sol_ = delta;
@@ -301,9 +302,14 @@ void ImprovedC3::Solve(const VectorXd &x0) {
 
   // Undoing to scaling to put variables back into correct units
   // This only scales lambda
+
+  //TODO need to rescale gamma?
   for (int i = 0; i < N_; ++i) {
     lambda_sol_->at(i) *= AnDn_;
+    gamma_sol_->at(i) *= AnDn_;
+
     z_sol_->at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    z_sol_->at(i).segment(n_x_+n_lambda_+n_u_, n_lambda_) *= AnDn_;
   }
 
   auto finish = std::chrono::high_resolution_clock::now();
@@ -327,8 +333,12 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   for (auto i = 0; i < N_; i++) {
     z_qp_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
     z_qp_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    z_qp_debug_->at(admm_iteration).at(i).segment(n_x_+n_lambda_+n_u_, n_lambda_) *= AnDn_;
+
     delta_qp_debug_->at(admm_iteration).at(i) = delta->at(i);
     delta_qp_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    delta_qp_debug_->at(admm_iteration).at(i).segment(n_x_+n_lambda_+n_u_, n_lambda_) *= AnDn_;
+
     w_qp_debug_->at(admm_iteration).at(i) = w->at(i);
   }
 
@@ -347,9 +357,14 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   for (auto i = 0; i < N_; i++) {
     z_proj_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
     z_proj_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    z_proj_debug_->at(admm_iteration).at(i).segment(n_x_+n_lambda_+n_u_, n_lambda_) *= AnDn_;
+
     delta_proj_debug_->at(admm_iteration).at(i) = delta->at(i);
     delta_proj_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *=
         AnDn_;
+
+    delta_proj_debug_->at(admm_iteration).at(i).segment(n_x_+n_lambda_+n_u_, n_lambda_)*=
+    AnDn_;
     w_proj_debug_->at(admm_iteration).at(i) = w->at(i);
   }
 
@@ -387,8 +402,13 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
     prog_.AddBoundingBoxConstraint(-1,1,x_.at(i)[6]);
     prog_.AddBoundingBoxConstraint(-1,1,x_.at(i)[8]);
     prog_.AddBoundingBoxConstraint(0,std::numbers::pi/2, x_.at(i)[4]);
-    prog_.AddBoundingBoxConstraint(1,1.5, x_.at(i)[2]);
-    prog_.AddConstraint(x_.at(i)[2] - std::sqrt(2.0)*sin(x_.at(i)[4] + std::numbers::pi/4) == 0);
+    prog_.AddBoundingBoxConstraint(1,std::numeric_limits<double>::infinity(), x_.at(i)[2]);
+    //prog_.AddBoundingBoxConstraint(0,std::numeric_limits<double>::infinity(),x_.at(i)[6]);
+
+    //prog_.AddBoundingBoxConstraint(-5,5, u_.at(i)[0]);
+    //prog_.AddBoundingBoxConstraint(-5,5, u_.at(i)[1]);
+    //prog_.AddBoundingBoxConstraint(0,15,u_.at(i)[2]);
+    //prog_.AddBoundingBoxConstraint(0,15,u_.at(i)[3]);
   }
 
 
@@ -404,6 +424,7 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
           -2 * G.at(i).block(n_x_, n_x_, n_lambda_, n_lambda_) *
               WD.at(i).segment(n_x_, n_lambda_),
           lambda_.at(i), 1));
+
       costs_.push_back(prog_.AddQuadraticCost(
           2 * G.at(i).block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
                             n_lambda_, n_lambda_),
@@ -414,7 +435,7 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
           gamma_.at(i), 1));
     }
   }
-  
+
 
   if (warm_start_) {
     int index = solve_time_ / lcs_.dt();
@@ -532,6 +553,11 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
     }
     u_ratio = std::sqrt(u1 / u2);
 
+    if (i >=6)
+    {
+      u_ratio = u_ratio/10000;
+
+    }
     // Get current lambda and gamma values
     double lambda_val = delta_c(n_x_ + i);
     double gamma_val = delta_c(n_x_ + n_lambda_ + n_u_ + i);
@@ -585,6 +611,169 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
 
   return delta_proj;
 }
+
+  std::vector<Eigen::VectorXd> ImprovedC3::Solve_FinalQP(const Eigen::VectorXd &x0,
+                                     const std::vector<Eigen::MatrixXd> &G,
+                                     const std::vector<Eigen::VectorXd> &delta,
+                                     int admm_iteration,
+                                     bool is_final)
+{
+  if (h_is_zero_ == 1) { // No dependence on u, so just simulate passive system
+    drake::solvers::MobyLCPSolver<double> LCPSolver;
+    VectorXd lambda0;
+    LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
+                            &lambda0);
+    if (initial_force_constraint_) {
+      initial_force_constraint_->UpdateCoefficients(
+          MatrixXd::Identity(n_lambda_, n_lambda_), lambda0);
+    } else {
+      initial_force_constraint_ =
+          prog_
+              .AddLinearEqualityConstraint(
+                  MatrixXd::Identity(n_lambda_, n_lambda_), lambda0, lambda_[0])
+              .evaluator();
+    }
+  }
+
+
+
+  // for (int i = 0; i < N_; ++i)
+  // {
+  //   MatrixXd I_lambda (n_lambda_, n_lambda_);
+  //   MatrixXd I_gamma (n_lambda_, n_lambda_);
+  //
+  //   I_lambda = MatrixXd::Zero(n_lambda_, n_lambda_);
+  //   I_gamma = MatrixXd::Zero(n_lambda_, n_lambda_);
+  //
+  //   VectorXd b (n_lambda_);
+  //
+  //   b = VectorXd::Zero(n_lambda_);
+  //
+  //   for (int j =0; j < n_lambda_; ++j)
+  //   {
+  //     if (delta.at(i)[n_x_+j] == 0)
+  //     {
+  //       I_lambda(j,j)= 1;
+  //
+  //     }else
+  //     {
+  //       I_gamma(j,j) = 1;
+  //     }
+  //
+  //   }
+  //
+  //   prog_
+  //       .AddLinearEqualityConstraint(I_lambda,b,lambda_.at(i));
+  //
+  //   prog_
+  //       .AddLinearEqualityConstraint(I_gamma,b,gamma_.at(i));
+  //
+  //   std::cerr << "delta" << delta.at(i) << std::endl;
+  //   std::cerr << "I_lambda" << I_lambda << std::endl;
+  //   std::cerr << "I_gamma" << I_gamma << std::endl;
+  // }
+
+
+
+  //add constraint to limit f1 and f2 to (1,-1)
+  double eps = 1e-4;
+
+  for (int i = 0; i < N_; ++i)
+  {
+    prog_.AddBoundingBoxConstraint(-1,1,x_.at(i)[6]);
+    prog_.AddBoundingBoxConstraint(-1,1,x_.at(i)[8]);
+    prog_.AddBoundingBoxConstraint(0,std::numbers::pi/2, x_.at(i)[4]);
+    prog_.AddBoundingBoxConstraint(1,std::numeric_limits<double>::infinity(), x_.at(i)[2]);
+
+    for (int j = 0; j < n_lambda_; ++j)
+    {
+      prog_.AddBoundingBoxConstraint(eps,std::numeric_limits<double>::infinity(),gamma_.at(i)[j]);
+      prog_.AddBoundingBoxConstraint(eps,std::numeric_limits<double>::infinity(),lambda_.at(i)[j]);
+    }
+
+  }
+
+
+  for (auto &cost : costs_) {
+    prog_.RemoveCost(cost);
+  }
+  costs_.clear();
+
+  for (int i = 0; i < N_ + 1; ++i) {
+    if (i < N_) {
+      costs_.push_back(prog_.AddQuadraticCost(
+          2 * G.at(i).block(n_x_, n_x_, n_lambda_, n_lambda_),
+          -2 * G.at(i).block(n_x_, n_x_, n_lambda_, n_lambda_) *
+              delta.at(i).segment(n_x_, n_lambda_),
+          lambda_.at(i), 1));
+
+      costs_.push_back(prog_.AddQuadraticCost(
+          2 * G.at(i).block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
+                            n_lambda_, n_lambda_),
+          -2 *
+              G.at(i).block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
+                            n_lambda_, n_lambda_) *
+              delta.at(i).segment(n_x_ + n_lambda_ + n_u_, n_lambda_),
+          gamma_.at(i), 1));
+    }
+  }
+
+
+  if (warm_start_) {
+    int index = solve_time_ / lcs_.dt();
+    double weight = (solve_time_ - index * lcs_.dt()) / lcs_.dt();
+    for (int i = 0; i < N_ - 1; ++i) {
+      prog_.SetInitialGuess(x_[i],
+                            (1 - weight) * warm_start_x_[admm_iteration][i] +
+                                weight * warm_start_x_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(
+          lambda_[i], (1 - weight) * warm_start_lambda_[admm_iteration][i] +
+                          weight * warm_start_lambda_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(u_[i],
+                            (1 - weight) * warm_start_u_[admm_iteration][i] +
+                                weight * warm_start_u_[admm_iteration][i + 1]);
+    }
+    prog_.SetInitialGuess(x_[0], x0);
+    prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
+  }
+
+  MathematicalProgramResult result = osqp_.Solve(prog_);
+
+  if (result.is_success()) {
+    for (int i = 0; i < N_; ++i) {
+
+        x_sol_->at(i) = result.GetSolution(x_[i]);
+        lambda_sol_->at(i) = result.GetSolution(lambda_[i]);
+        u_sol_->at(i) = result.GetSolution(u_[i]);
+        gamma_sol_->at(i) = result.GetSolution(gamma_[i]);
+
+      z_sol_->at(i).segment(0, n_x_) = result.GetSolution(x_[i]);
+      z_sol_->at(i).segment(n_x_, n_lambda_) = result.GetSolution(lambda_[i]);
+      z_sol_->at(i).segment(n_x_ + n_lambda_, n_u_) = result.GetSolution(u_[i]);
+      z_sol_->at(i).segment(n_x_ + n_lambda_ + n_u_, n_lambda_) =
+          result.GetSolution(gamma_[i]);
+
+      if (warm_start_) {
+        // update warm start parameters
+        warm_start_x_[admm_iteration][i] = result.GetSolution(x_[i]);
+        warm_start_lambda_[admm_iteration][i] = result.GetSolution(lambda_[i]);
+        warm_start_u_[admm_iteration][i] = result.GetSolution(u_[i]);
+      }
+    }
+    if (warm_start_) {
+      warm_start_x_[admm_iteration][N_] = result.GetSolution(x_[N_]);
+    }
+  } else {
+    std::cout << "QP failed to solve" << std::endl;
+  }
+
+  return *z_sol_;
+}
+
+
+
+
+
 
 void ImprovedC3::AddLinearConstraint(const Eigen::MatrixXd &A,
                                      const VectorXd &lower_bound,

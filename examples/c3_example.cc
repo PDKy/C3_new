@@ -43,7 +43,7 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
 namespace c3 {
 
 int DoMain(int argc, char* argv[]) {
-  int example = 1;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+  int example = 2;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
   std::cout << "Running example : " << example << std::endl;
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:
@@ -79,23 +79,23 @@ int DoMain(int argc, char* argv[]) {
   }
 
   /// set parameters as const
-  const vector<MatrixXd> A = Ad;
-  const vector<MatrixXd> B = Bd;
-  const vector<MatrixXd> D = Dd;
-  const vector<MatrixXd> E = Ed;
-  const vector<MatrixXd> F = Fd;
-  const vector<MatrixXd> H = Hd;
-  const vector<VectorXd> d = dd;
-  const vector<VectorXd> c = cd;
-  const vector<MatrixXd> Q = Qd;
-  const vector<MatrixXd> R = Rd;
-  const vector<MatrixXd> G = Gd;
-  const vector<MatrixXd> U = Ud;
-  const int N = Nd;
-  const int n = nd;
-  const int m = md;
-  const int k = kd;
-  const double dt = 0.01;
+    const vector<MatrixXd> A = Ad;
+    const vector<MatrixXd> B = Bd;
+    const vector<MatrixXd> D = Dd;
+    const vector<MatrixXd> E = Ed;
+    const vector<MatrixXd> F = Fd;
+    const vector<MatrixXd> H = Hd;
+    const vector<VectorXd> d = dd;
+    const vector<VectorXd> c = cd;
+    const vector<MatrixXd> Q = Qd;
+    const vector<MatrixXd> R = Rd;
+    const vector<MatrixXd> G = Gd;
+    const vector<MatrixXd> U = Ud;
+    const int N = Nd;
+    const int n = nd;
+    const int m = md;
+    const int k = kd;
+    const double dt = 0.01;
 
   LCS system(A, B, D, d, E, F, H, c, dt);
   C3::CostMatrices cost(Q, R, G, U);
@@ -138,7 +138,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 10;  // number of timesteps for the simulation
+  int timesteps = 2000;  // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
@@ -163,14 +163,23 @@ int DoMain(int argc, char* argv[]) {
     }
 
 
-    if (example == 2) {
-      init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd,
-                    &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
-      LCS system(A, B, D, d, E, F, H, c, dt);
-      C3::CostMatrices cost(Q, R, G, U);
-      C3MIQP opt(system, cost, xdesired, options);
-    }
+    // if (example == 2) {
+    //   init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd,
+    //                 &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
+    //
+    //   LCS system(Ad, Bd, Dd, dd, Ed, Fd, Hd, cd, dt);
+    //   C3::CostMatrices cost(Q, R, G, U);
+    //   C3MIQP opt(system, cost, xdesired, options);
+    // }
 
+
+      if (example == 2) {
+          init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd,
+                        &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
+          LCS system(A, B, D, d, E, F, H, c, dt);
+          C3::CostMatrices cost(Q, R, G, U);
+          C3MIQP opt(system, cost, xdesired, options);
+      }
 
     auto start = std::chrono::high_resolution_clock::now();
     /// calculate the input given x[i]
@@ -187,7 +196,11 @@ int DoMain(int argc, char* argv[]) {
     x[i + 1] = system.Simulate(x[i], input[i]);
 
     /// print the state
-    //std::cout << "state: " << x[i + 1] << std::endl;
+    std::cout << "state: " << x[i + 1] << std::endl;
+      //std::cout << "input" <<input[i] << std::endl;
+      //std::cout << "example" << example << std::endl;
+    //std::cout << "B" << Bd[0] << std::endl;
+
   }
   std::cout << "Average time: " << total_time / (timesteps - 1) << std::endl;
   return 0;
@@ -461,7 +474,7 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
   int N = 10;
 
   float mu1 = 0.1;
-  float mu2 = 9.81;
+  float mu2 = 0.1;
   float mu3 = 1.0;
   float g = 9.81;
   float dt = 0.01;
@@ -601,6 +614,7 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
 
   VectorXd xdesiredinit;
   xdesiredinit = VectorXd::Zero(n);
+    xdesiredinit << 0, 0, 1.41421356,0,0.785,0,0.9,0,0.9,0;
   std::vector<VectorXd> xdesired(N + 1, xdesiredinit);
 
   MatrixXd Us(n + m + k, n + m + k);

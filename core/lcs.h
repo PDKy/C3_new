@@ -3,6 +3,8 @@
 #include <vector>
 #include <Eigen/Dense>
 #include "drake/common/drake_assert.h"
+#include <tuple>
+
 
 namespace c3 {
 class LCS {
@@ -52,7 +54,8 @@ class LCS {
   const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init,
                                  Eigen::VectorXd& u);
 
-
+  const std::tuple<Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd> Simulate_debug(Eigen::VectorXd& x_init,
+                                 Eigen::VectorXd& u);
   /*!
    * Accessors dynamics terms
    */
