@@ -1,0 +1,7 @@
+/bazel-bin
+/bazel-c3
+/bazel-out
+/bazel-testlogs
+.clwb/
+MODULE.bazel
+MODULE.bazel.lock

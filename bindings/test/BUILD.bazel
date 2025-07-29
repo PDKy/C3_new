@@ -1,0 +1,59 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "c3_py_test",
+    srcs = ["c3_py_test.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "improved_c3_py_test",
+    srcs = ["improved_c3_py_test.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "improved_c3_finger",
+    srcs = ["improved_c3_finger.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "improved_c3_pivot",
+    srcs = ["improved_c3_pivot.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "improved_c3_finger_debug",
+    srcs = ["improved_c3_finger_debug.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "improved_c3_pivoting",
+    srcs = ["improved_c3_pivoting.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "pivoting_MIQP",
+    srcs = ["pivoting_MIQP.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
