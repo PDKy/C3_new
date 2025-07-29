@@ -180,6 +180,9 @@ def make_pivoting_cost(lcs):
 
     #Rinit = 0.0005 * np.eye(k)
 
+
+    #Rinit = 0.03 * np.eye(k)
+
     R = [Rinit for _ in range(N)]
 
     Qinit = np.eye(n)
@@ -818,7 +821,7 @@ def drawgraph_att_atADMM_iter(time_frame,N,ADMM_iter,state_index):
     plt.show()
 
 
-def drawgraph_atN_ADMM_lambda_gamma(time_frame,N,ADMM_iter,contact_index,finger):
+def drawgraph_atN_ADMM_lambda_gamma(time_frame,N,ADMM_iter,contact_index,finger,flag_truefriction):
     n_x = 10
     n_lambda = 10
     n_u = 4
@@ -872,11 +875,24 @@ def drawgraph_atN_ADMM_lambda_gamma(time_frame,N,ADMM_iter,contact_index,finger)
         contact_force_delta_draw  = f1_contact_force_delta_draw
         contact_force_final = f1_contact_force_final_draw
 
+        contact_force_qp_draw_positive = f1_contact_force_qp[:,N,1]
+        contact_force_qp_draw_negative = f1_contact_force_qp[:,N,2]
+
+        contact_force_delta_draw_positive = f1_contact_force_delta[:,N,1]
+        contact_force_delta_draw_negative = f1_contact_force_delta[:,N,2]
+
+
         output_force_draw = f1_output_force[contact_index]
     else:
         contact_force_qp_draw = f2_contact_force_qp_draw
         contact_force_delta_draw  = f2_contact_force_delta_draw
         contact_force_final = f2_contact_force_final_draw
+
+        contact_force_qp_draw_positive = f2_contact_force_qp[:,N,1]
+        contact_force_qp_draw_negative = f2_contact_force_qp[:,N,2]
+
+        contact_force_delta_draw_positive = f2_contact_force_delta[:,N,1]
+        contact_force_delta_draw_negative = f2_contact_force_delta[:,N,2]
 
         output_force_draw = f2_output_force[contact_index]
 
@@ -904,18 +920,33 @@ def drawgraph_atN_ADMM_lambda_gamma(time_frame,N,ADMM_iter,contact_index,finger)
     f2_contact_gamma_final_draw = f2_contact_gamma_final[contact_index]
 
 
+
+
     if (finger == 1):
         contact_gamma_qp_draw = f1_contact_gamma_qp_draw
         contact_gamma_delta_draw  = f1_contact_gamma_delta_draw
         contact_gamma_final = f1_contact_gamma_final_draw
 
         output_distance_draw = f1_output_distance[contact_index]
+
+        contact_gamma_qp_draw_positive = f1_contact_gamma_qp[:,N,1]
+        contact_gamma_qp_draw_negative = f1_contact_gamma_qp[:,N,2]
+
+        contact_gamma_delta_draw_positive = f1_contact_gamma_delta[:,N,1]
+        contact_gamma_delta_draw_negative = f1_contact_gamma_delta[:,N,2]
+
     else:
         contact_gamma_qp_draw = f2_contact_gamma_qp_draw
         contact_gamma_delta_draw  = f2_contact_gamma_delta_draw
         contact_gamma_final = f2_contact_gamma_final_draw
 
         output_distance_draw = f2_output_distance[contact_index]
+
+        contact_gamma_qp_draw_positive = f2_contact_gamma_qp[:,N,1]
+        contact_gamma_qp_draw_negative = f2_contact_gamma_qp[:,N,2]
+
+        contact_gamma_delta_draw_positive = f2_contact_gamma_delta[:,N,1]
+        contact_gamma_delta_draw_negative = f2_contact_gamma_delta[:,N,2]
 
 
 
@@ -929,31 +960,88 @@ def drawgraph_atN_ADMM_lambda_gamma(time_frame,N,ADMM_iter,contact_index,finger)
 
     #plt.scatter(contact_force_qp_draw,contact_gamma_qp_draw)
     texts = []
-    for i in range(ADMM_iter):
 
-        plt.scatter(contact_force_qp_draw[i],contact_gamma_qp_draw[i],color="green")
-        txt = plt.text(contact_force_qp_draw[i],contact_gamma_qp_draw[i],i,color="green")
-        texts.append(txt)
+    if (not flag_truefriction):
+        for i in range(ADMM_iter):
 
-        if (contact_force_delta_draw[i] == 0):
-
-            if (contact_gamma_delta_draw[i]<= 1e-8):
-                plt.scatter(contact_force_delta_draw[i],contact_force_delta_draw[i],color="red")
-                txt = plt.text(contact_force_delta_draw[i],contact_force_delta_draw[i],i,color = "red")
-                texts.append(txt)
-            else:
-                #plt.axhline(contact_gamma_delta_draw[i],color = "red",linestyle="--",linewidth = 1)
-                plt.axvline(0,color = "red",linestyle="--",linewidth = 1)
-                txt = plt.text(0,contact_gamma_qp_draw[i],i,color = "red")
-                texts.append(txt)
-        else:
-            #plt.axvline(contact_force_delta_draw[i],color = "blue",linestyle="--",linewidth = 1,label=i)
-            plt.axhline(0,color = "blue",linestyle="--",linewidth = 1)
-            txt = plt.text(contact_force_qp_draw[i],0,i,color = "blue")
+            plt.scatter(contact_force_qp_draw[i],contact_gamma_qp_draw[i],color="green")
+            txt = plt.text(contact_force_qp_draw[i],contact_gamma_qp_draw[i],i,color="green")
             texts.append(txt)
 
-        print(f"ADMM iter: {i}, projection step: {contact_force_delta_draw[i],contact_gamma_delta_draw[i]}")
-        print(f"ADMM iter:{i}, QP step:{contact_force_qp_draw[i],contact_gamma_qp_draw[i]}")
+            if (contact_force_delta_draw[i] == 0):
+
+                if (contact_gamma_delta_draw[i]<= 1e-8):
+                    plt.scatter(contact_force_delta_draw[i],contact_force_delta_draw[i],color="red")
+                    txt = plt.text(contact_force_delta_draw[i],contact_force_delta_draw[i],i,color = "red")
+                    texts.append(txt)
+                else:
+                    #plt.axhline(contact_gamma_delta_draw[i],color = "red",linestyle="--",linewidth = 1)
+                    plt.axvline(0,color = "red",linestyle="--",linewidth = 1)
+                    txt = plt.text(0,contact_gamma_qp_draw[i],i,color = "red")
+                    texts.append(txt)
+            else:
+                #plt.axvline(contact_force_delta_draw[i],color = "blue",linestyle="--",linewidth = 1,label=i)
+                plt.axhline(0,color = "blue",linestyle="--",linewidth = 1)
+                txt = plt.text(contact_force_qp_draw[i],0,i,color = "blue")
+                texts.append(txt)
+
+            print(f"ADMM iter: {i}, projection step: {contact_force_delta_draw[i],contact_gamma_delta_draw[i]}")
+            print(f"ADMM iter:{i}, QP step:{contact_force_qp_draw[i],contact_gamma_qp_draw[i]}")
+
+    else:
+        for i in range(ADMM_iter):
+
+            plt.scatter(contact_force_qp_draw_positive[i],contact_gamma_qp_draw_positive[i],color="green")
+            txt = plt.text(contact_force_qp_draw_positive[i],contact_gamma_qp_draw_positive[i],i,color="green")
+            texts.append(txt)
+
+            plt.scatter(contact_force_qp_draw_negative[i],contact_gamma_qp_draw_negative[i],color="orange")
+            txt = plt.text(contact_force_qp_draw_negative[i],contact_gamma_qp_draw_negative[i],i,color="orange")
+            texts.append(txt)
+
+
+
+            if (contact_force_delta_draw_positive[i] == 0):
+
+                if (contact_gamma_delta_draw_positive[i]<= 1e-8):
+                    plt.scatter(contact_force_delta_draw_positive[i],contact_force_delta_draw_positive[i],color="green")
+                    txt = plt.text(contact_force_delta_draw_positive[i],contact_force_delta_draw_positive[i],i,color = "grenn")
+                    texts.append(txt)
+                else:
+                    #plt.axhline(contact_gamma_delta_draw[i],color = "red",linestyle="--",linewidth = 1)
+                    plt.axvline(0,color = "red",linestyle="--",linewidth = 1)
+                    txt = plt.text(0,contact_gamma_qp_draw_positive[i],i,color = "red")
+                    texts.append(txt)
+            else:
+                #plt.axvline(contact_force_delta_draw[i],color = "blue",linestyle="--",linewidth = 1,label=i)
+                plt.axhline(0,color = "blue",linestyle="--",linewidth = 1)
+                txt = plt.text(contact_force_qp_draw_positive[i],0,i,color = "blue")
+                texts.append(txt)
+
+            if (contact_force_delta_draw_negative[i] == 0):
+
+                if (contact_gamma_delta_draw_negative[i]<= 1e-8):
+                    plt.scatter(contact_force_delta_draw_negative[i],contact_force_delta_draw_negative[i],color="orange")
+                    txt = plt.text(contact_force_delta_draw_negative[i],contact_force_delta_draw_negative[i],i,color = "orange")
+                    texts.append(txt)
+                else:
+                    #plt.axhline(contact_gamma_delta_draw[i],color = "red",linestyle="--",linewidth = 1)
+                    plt.axvline(0,color = "red",linestyle="--",linewidth = 1)
+                    txt = plt.text(0,contact_gamma_qp_draw_negative[i],i,color = "red")
+                    texts.append(txt)
+            else:
+                #plt.axvline(contact_force_delta_draw[i],color = "blue",linestyle="--",linewidth = 1,label=i)
+                plt.axhline(0,color = "blue",linestyle="--",linewidth = 1)
+                txt = plt.text(contact_force_qp_draw_negative[i],0,i,color = "blue")
+                texts.append(txt)
+
+
+
+
+
+            print(f"ADMM iter: {i}, projection step: {contact_force_delta_draw[i],contact_gamma_delta_draw[i]}")
+            print(f"ADMM iter:{i}, QP step:{contact_force_qp_draw[i],contact_gamma_qp_draw[i]}")
+
 
     plt.scatter(contact_force_final,contact_gamma_final,color="black")
     txt = plt.text(contact_force_final,contact_gamma_final,"final")
@@ -1117,6 +1205,35 @@ def drawgraph_ground_atN_ADMM_lambda_gamma(time_frame,N,ADMM_iter,contact_index)
 
     plt.show()
 
+
+def drawgraph_input_atN_ADMM_lambda_gamma(time_frame,N,ADMM_iter,contact_index):
+    n_x = 10
+    n_lambda = 10
+    n_u = 4
+
+    qp_debug = np.asarray(np.load("qp_debug.npy"))[time_frame]
+    qp_final_step = np.asarray(np.load("qp_data.npy"))[time_frame][N]
+
+    state_qp = qp_debug[:,:,n_x+n_lambda:n_x+n_lambda+n_u]
+    N1 = state_qp[:,N,2]
+    N2 = state_qp[:,N,3]
+
+    state_final = qp_final_step[n_x+n_lambda:n_x+n_lambda+n_u]
+    N1_final = state_final[2]
+    N2_final = state_final[3]
+
+
+    #AMDD_iter_array = np.arange(0,ADMM_iter,1)
+
+    #plt.scatter(N1,AMDD_iter_array)
+    # plt.scatter(AMDD_iter_array,N2)
+    # plt.scatter(AMDD_iter_array,N1)
+
+    print(N1,N1_final)
+    print(N2,N2_final)
+    # print(AMDD_iter_array)
+
+    plt.show()
 
 
 
@@ -1331,8 +1448,9 @@ if __name__ == "__main__":
     N_ = 10
     ADMM_iter = 5
     state_index = 4
-    contact_index = 2
-    #main(N_,ADMM_iter)
+    contact_index = 1
+
+    main(N_,ADMM_iter)
     #drawgraph_t_pred_lambda_gamma(N_,ADMM_iter,contact_index,1)
     #drawgraph_t_pred_gamma(N_,ADMM_iter,contact_index)
     #drawgraph_t_pred_state(N_,4)
@@ -1344,5 +1462,7 @@ if __name__ == "__main__":
 
     #drawgraph_N_ADMM_lambda_gamma(0,ADMM_iter,contact_index)
     #drawgraph_t_pred_ground_lambda_gamma(N_,ADMM_iter,contact_index)
-    drawgraph_atN_ADMM_lambda_gamma(800,0,ADMM_iter,contact_index,1)
-    #drawgraph_ground_atN_ADMM_lambda_gamma(400,0,ADMM_iter,contact_index)
+    drawgraph_atN_ADMM_lambda_gamma(800,0,ADMM_iter,contact_index,1,False)
+    #drawgraph_ground_atN_ADMM_lambda_gamma(800,0,ADMM_iter,contact_index)
+
+    #drawgraph_input_atN_ADMM_lambda_gamma(800,0,ADMM_iter,contact_index)

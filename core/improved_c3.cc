@@ -119,9 +119,9 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
     std::vector<VectorXd> debug_proj_iter_i;
     for (int j = 0; j < N_; j++) {
       debug_z_iter_i.emplace_back(
-          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+          Eigen::VectorXd::Zero(n_x_ + 2*n_lambda_ + n_u_));
       debug_proj_iter_i.emplace_back(
-          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+          Eigen::VectorXd::Zero(n_x_ + 2*n_lambda_ + n_u_));
     }
     debug_z->push_back(debug_z_iter_i);
     debug_projection->push_back(debug_proj_iter_i);
@@ -318,6 +318,7 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   for (auto i = 0; i < N_; i++) {
     debug_z->at(admm_iteration).at(i) = ZW.at(i);
   }
+
   if (cost_matrices_.U[0].isZero(0)) {
     *delta = SolveProjection(*G, ZW, admm_iteration);
 

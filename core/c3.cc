@@ -89,7 +89,8 @@ C3::C3(const LCS &lcs, const C3::CostMatrices &costs,
 
   // debug vars
   debug_z = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
-  debug_qp = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+  debug_projection =
+      std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
 
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
@@ -108,6 +109,20 @@ C3::C3(const LCS &lcs, const C3::CostMatrices &costs,
           n_lambda_, "lambda" + std::to_string(i)));
     }
   }
+
+  for (int i = 0; i < options_.admm_iter; i++) {
+    std::vector<VectorXd> debug_z_iter_i;
+    std::vector<VectorXd> debug_proj_iter_i;
+    for (int j = 0; j < N_; j++) {
+      debug_z_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+      debug_proj_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+    }
+    debug_z->push_back(debug_z_iter_i);
+    debug_projection->push_back(debug_proj_iter_i);
+  }
+
 
   // initialize the constraint bindings
   initial_state_constraint_ = nullptr;
@@ -269,11 +284,15 @@ void C3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   }
 
   vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true);
-  debug_z->push_back(z);
+  //debug_z->push_back(z);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
     ZW[i] = w->at(i) + z[i];
+  }
+
+  for (auto i = 0; i < N_; i++) {
+    debug_z->at(admm_iteration).at(i) = ZW.at(i);
   }
 
   if (cost_matrices_.U[0].isZero(0)) {
@@ -281,6 +300,10 @@ void C3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
 
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
+  }
+
+  for (auto i = 0; i < N_; i++) {
+    debug_projection->at(admm_iteration).at(i) = (*delta)[i];
   }
 
   for (int i = 0; i < N_; ++i) {

@@ -140,8 +140,8 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
-  std::vector<std::vector<Eigen::VectorXd>> GetDebugInfo() { return *debug_z; }
-  std::vector<std::vector<Eigen::VectorXd>> GetQPInfo() { return *debug_qp; }
+    std::vector<std::vector<Eigen::VectorXd>> GetDebugInfo() { return *debug_z; }
+    std::vector<std::vector<Eigen::VectorXd>> GetQPInfo() { return *debug_projection; }
 
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
@@ -231,6 +231,11 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
 
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_z;
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_projection;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> debug_proj_step;
+
+
   // QP step constraints
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
@@ -245,7 +250,7 @@ class C3 {
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
 
     // debug vars
-  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_z;
+
   std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_qp;
   // 
 

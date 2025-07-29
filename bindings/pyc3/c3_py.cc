@@ -98,7 +98,10 @@ PYBIND11_MODULE(c3, m) {
       .def("GetFullSolution", &C3::GetFullSolution)
       .def("GetStateSolution", &C3::GetStateSolution)
       .def("GetForceSolution", &C3::GetForceSolution)
-      .def("GetInputSolution", &C3::GetInputSolution);
+      .def("GetInputSolution", &C3::GetInputSolution)
+      .def("GetDebugInfo", &C3::GetDebugInfo)
+      .def("GetQPInfo", &C3::GetQPInfo);
+
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
       .def(py::init<const LCS &, const C3::CostMatrices &,
